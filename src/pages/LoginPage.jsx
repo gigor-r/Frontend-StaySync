@@ -7,13 +7,15 @@ import AlertMessage from '../components/common/AlertMessage';
 const REDIRECT = { ADMIN: '/recepcion', RECEPCIONISTA: '/recepcion', HUESPED: '/huesped' };
 
 export default function LoginPage() {
-  const [form,    setForm]    = useState({ email: '', password: '' });
-  const [error,   setError]   = useState('');
-  const [loading, setLoading] = useState(false);
-  const [tab,     setTab]     = useState('login'); // 'login' | 'register'
-  const [reg,     setReg]     = useState({ nombre:'', apellido:'', email:'', password:'', telefono:'' });
-  const [regErr,  setRegErr]  = useState('');
-  const [regOk,   setRegOk]   = useState(false);
+  const [form,        setForm]        = useState({ email: '', password: '' });
+  const [error,       setError]       = useState('');
+  const [loading,     setLoading]     = useState(false);
+  const [tab,         setTab]         = useState('login'); // 'login' | 'register'
+  const [reg,         setReg]         = useState({ nombre:'', apellido:'', email:'', password:'', telefono:'' });
+  const [regErr,      setRegErr]      = useState('');
+  const [regOk,       setRegOk]       = useState(false);
+  const [showPass,    setShowPass]    = useState(false);
+  const [showRegPass, setShowRegPass] = useState(false);
 
   const { login } = useAuth();
   const navigate  = useNavigate();
@@ -128,7 +130,7 @@ export default function LoginPage() {
                   <div className="input-group">
                     <span className="input-group-text"><i className="bi bi-lock" /></span>
                     <input
-                      type="password"
+                      type={showPass ? 'text' : 'password'}
                       className="form-control"
                       placeholder="••••••••"
                       value={form.password}
@@ -136,6 +138,14 @@ export default function LoginPage() {
                       required
                       autoComplete="current-password"
                     />
+                    <button
+                      type="button"
+                      className="input-group-text bg-white border-start-0"
+                      onClick={() => setShowPass(v => !v)}
+                      tabIndex={-1}
+                    >
+                      <i className={`bi ${showPass ? 'bi-eye-slash' : 'bi-eye'}`} />
+                    </button>
                   </div>
                 </div>
 
@@ -202,8 +212,24 @@ export default function LoginPage() {
                     </div>
                     <div className="mb-4">
                       <label className="form-label fw-medium small">Contraseña</label>
-                      <input type="password" className="form-control" placeholder="Mínimo 8 chars, mayús, número y símbolo"
-                        value={reg.password} onChange={e => setReg(p=>({...p,password:e.target.value}))} required />
+                      <div className="input-group">
+                        <input
+                          type={showRegPass ? 'text' : 'password'}
+                          className="form-control"
+                          placeholder="Mínimo 8 chars, mayús, número y símbolo"
+                          value={reg.password}
+                          onChange={e => setReg(p=>({...p,password:e.target.value}))}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="input-group-text bg-white border-start-0"
+                          onClick={() => setShowRegPass(v => !v)}
+                          tabIndex={-1}
+                        >
+                          <i className={`bi ${showRegPass ? 'bi-eye-slash' : 'bi-eye'}`} />
+                        </button>
+                      </div>
                       <small className="text-muted">Ej: MiPass@123</small>
                     </div>
                     <button type="submit" className="btn btn-ss-dark w-100 py-2 fw-semibold" disabled={loading}>

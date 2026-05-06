@@ -8,6 +8,12 @@ const PORTAL_LABELS = {
   HUESPED:       'Portal Huésped',
 };
 
+const HOME_ROUTE = {
+  ADMIN:         '/recepcion',
+  RECEPCIONISTA: '/recepcion',
+  HUESPED:       '/huesped',
+};
+
 export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -34,7 +40,7 @@ export default function Navbar({ onToggleSidebar }) {
           <i className="bi bi-list fs-5" />
         </button>
 
-        <Link to="/" className="navbar-brand mb-0">
+        <Link to={HOME_ROUTE[user?.rol] ?? '/'} className="navbar-brand mb-0">
           <i className="bi bi-building me-2" />
           StaySync
         </Link>

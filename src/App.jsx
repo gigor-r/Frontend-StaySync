@@ -39,7 +39,6 @@ export default function App() {
             <Route path="/recepcion/huespedes"   element={<HuespedesRecepcion />} />
             <Route path="/recepcion/pagos"       element={<PagosRecepcion />} />
             <Route path="/recepcion/operaciones" element={<DashboardOperaciones />} />
-            <Route path="/perfil"                element={<PerfilPage />} />
           </Route>
         </Route>
 
@@ -50,7 +49,13 @@ export default function App() {
             <Route path="/huesped/reservas"  element={<ReservasHuesped />} />
             <Route path="/huesped/buscar"    element={<BuscarHabitaciones />} />
             <Route path="/huesped/servicios" element={<ServiciosHuesped />} />
-            <Route path="/perfil"            element={<PerfilPage />} />
+          </Route>
+        </Route>
+
+        {/* ── Perfil — cualquier usuario autenticado ── */}
+        <Route element={<ProtectedRoute allowedRoles={[]} />}>
+          <Route element={<Layout />}>
+            <Route path="/perfil" element={<PerfilPage />} />
           </Route>
         </Route>
 
