@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth }       from '../../context/AuthContext';
+import { useNavigate }   from 'react-router-dom';
 import { getMisReservas, cancelarReserva } from '../../services/reservasService';
 import LoadingSpinner    from '../../components/common/LoadingSpinner';
 import AlertMessage      from '../../components/common/AlertMessage';
@@ -24,12 +25,26 @@ const ESTADO_LABEL = {
 };
 
 export default function ReservasHuesped() {
-  const { user } = useAuth();
+  const { user }   = useAuth();
+  const navigate   = useNavigate();
   const [reservas,   setReservas]   = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState('');
   const [canceling,  setCanceling]  = useState(null);
   const [modalId,    setModalId]    = useState(null);
+
+  const handlePagar = (r) => {
+    navigate('/huesped/pago', {
+      state: {
+        reservaId:        r.id,
+        codigo:           r.codigo,
+        habitacionNumero: r.habitacionNumero ?? r.habitacionId,
+        fechaEntrada:     r.fechaEntrada,
+        fechaSalida:      r.fechaSalida,
+        precioTotal:      r.precioTotal,
+      },
+    });
+  };
 
   useEffect(() => {
     getMisReservas(user?.userId)
@@ -111,18 +126,30 @@ export default function ReservasHuesped() {
                         </span>
                       </td>
                       <td>
-                        {(r.estado === 'PENDIENTE' || r.estado === 'CONFIRMADA') && (
-                          <button
-                            className="btn btn-outline-danger btn-sm"
-                            disabled={canceling === r.id}
-                            onClick={() => setModalId(r.id)}
-                          >
-                            {canceling === r.id
-                              ? <span className="spinner-border spinner-border-sm" />
-                              : <i className="bi bi-x-circle" />
-                            }
-                          </button>
-                        )}
+                        <div className="d-flex gap-2">
+                          {r.estado === 'PENDIENTE' && (
+                            <button
+                              className="btn btn-sm fw-semibold"
+                              style={{ background: 'var(--ss-gold)', color: 'var(--ss-dark)', border: 'none', whiteSpace: 'nowrap' }}
+                              onClick={() => handlePagar(r)}
+                            >
+                              <i className="bi bi-credit-card-fill me-1" />
+                              Pagar
+                            </button>
+                          )}
+                          {(r.estado === 'PENDIENTE' || r.estado === 'CONFIRMADA') && (
+                            <button
+                              className="btn btn-outline-danger btn-sm"
+                              disabled={canceling === r.id}
+                              onClick={() => setModalId(r.id)}
+                            >
+                              {canceling === r.id
+                                ? <span className="spinner-border spinner-border-sm" />
+                                : <i className="bi bi-x-circle" />
+                              }
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

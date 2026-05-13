@@ -21,40 +21,64 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+/* ── Refresh mutex: one promise shared by all concurrent retries ── */
+let refreshPromise = null;
+
+function clearSession() {
+  Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
+  localStorage.removeItem('ss_user');
+}
+
 /* ── Response interceptor: handle 401 ───────────────────────── */
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
 
-    /* Try token refresh once on 401 */
+    // Only retry once, and never on the refresh endpoint itself
     if (
-      error.response?.status === 401 &&
-      !original._retry &&
-      !original.url?.includes('/auth/refresh')
+      error.response?.status !== 401 ||
+      original._retry ||
+      original.url?.includes('/auth/refresh')
     ) {
-      original._retry = true;
-      const refreshToken = localStorage.getItem(KEYS.refresh);
-
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${BFF_URL}/auth/refresh`, { refreshToken });
-          localStorage.setItem(KEYS.access,  data.accessToken);
-          localStorage.setItem(KEYS.refresh, data.refreshToken);
-          original.headers.Authorization = `Bearer ${data.accessToken}`;
-          return apiClient(original);
-        } catch {
-          /* Refresh failed → force logout */
-          Object.values(KEYS).forEach(k => localStorage.removeItem(k));
-          localStorage.removeItem('ss_user');
-          window.location.href = '/login';
-        }
-      } else {
-        window.location.href = '/login';
-      }
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    original._retry = true;
+
+    const refreshToken = localStorage.getItem(KEYS.refresh);
+    if (!refreshToken) {
+      clearSession();
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
+    // If a refresh is already in flight, piggyback on it instead of firing another
+    if (!refreshPromise) {
+      refreshPromise = axios
+        .post(`${BFF_URL}/auth/refresh`, { refreshToken })
+        .then(({ data }) => {
+          localStorage.setItem(KEYS.access, data.accessToken);
+          localStorage.setItem(KEYS.refresh, data.refreshToken);
+          return data.accessToken;
+        })
+        .finally(() => {
+          // Always release the lock so future 401s can refresh again
+          refreshPromise = null;
+        });
+    }
+
+    return refreshPromise
+      .then((newToken) => {
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(original);
+      })
+      .catch(() => {
+        // Refresh failed (token not found, expired, etc.) → force logout once
+        clearSession();
+        window.location.href = '/login';
+        return Promise.reject(error);
+      });
   },
 );
 

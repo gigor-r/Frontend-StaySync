@@ -1,79 +1,87 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getSolicitudes, actualizarSolicitud } from '../../services/serviciosService';
+import { getTareas, actualizarSolicitud } from '../../services/serviciosService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import AlertMessage   from '../common/AlertMessage';
 
+// Enum values match the backend EstadoSolicitud exactly
 const ESTADO_META = {
-  PENDIENTE:    { label: 'Pendiente',     badge: 'bg-warning text-dark', icon: 'bi-clock',          next: ['EN_PROGRESO'] },
-  EN_PROGRESO:  { label: 'En progreso',   badge: 'bg-primary',           icon: 'bi-arrow-repeat',   next: ['TERMINADA', 'PENDIENTE'] },
-  TERMINADA:    { label: 'Terminada',     badge: 'bg-success',           icon: 'bi-check-circle',   next: [] },
-  CANCELADA:    { label: 'Cancelada',     badge: 'bg-secondary',         icon: 'bi-x-circle',       next: [] },
-};
-
-const TIPO_ICONS = {
-  LIMPIEZA:     'bi-brush',
-  MANTENIMIENTO:'bi-tools',
-  LAVANDERIA:   'bi-droplet',
-  AMENITIES:    'bi-gift',
+  PENDIENTE:  { label: 'Pendiente',    badge: 'bg-warning text-dark', icon: 'bi-clock',         color: '#e6a817', next: ['EN_PROCESO'] },
+  EN_PROCESO: { label: 'En proceso',   badge: 'bg-primary',           icon: 'bi-arrow-repeat',  color: '#0d6efd', next: ['COMPLETADO', 'CANCELADO'] },
+  COMPLETADO: { label: 'Completado',   badge: 'bg-success',           icon: 'bi-check-circle',  color: '#198754', next: [] },
+  CANCELADO:  { label: 'Cancelado',    badge: 'bg-secondary',         icon: 'bi-x-circle',      color: '#6c757d', next: [] },
 };
 
 function TareaCard({ tarea, onActualizar, updating }) {
-  const meta = ESTADO_META[tarea.estado] ?? { label: tarea.estado, badge: 'bg-secondary', icon: 'bi-question', next: [] };
-  const tipoIcon = TIPO_ICONS[tarea.tipoServicio] ?? 'bi-clipboard-check';
-  const cssCls = tarea.estado?.toLowerCase().replace('_', '_');
+  const meta = ESTADO_META[tarea.estado] ?? {
+    label: tarea.estado, badge: 'bg-secondary', icon: 'bi-question', color: '#6c757d', next: [],
+  };
+  const isUpdating = updating === tarea.id;
 
   return (
-    <div className={`tarea-card ${cssCls} mb-3`}>
-      <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
-        <div className="d-flex align-items-center gap-2">
-          <i className={`bi ${tipoIcon} fs-5`} style={{ color: 'var(--ss-gold)' }} />
+    <div
+      className="card border-0 mb-3"
+      style={{
+        borderRadius: 12,
+        boxShadow: '0 2px 10px rgba(34,32,22,0.08)',
+        borderLeft: `4px solid ${meta.color}`,
+      }}
+    >
+      <div className="card-body p-3">
+        <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
           <div>
-            <div className="fw-semibold">{tarea.descripcion ?? tarea.tipoServicio}</div>
+            <div className="fw-semibold" style={{ color: 'var(--ss-dark)', fontSize: '0.95rem' }}>
+              {tarea.servicioNombre ?? '—'}
+            </div>
             <small className="text-muted">
-              Hab. {tarea.habitacionNumero ?? tarea.habitacionId}
-              {tarea.huespedNombre && <> · {tarea.huespedNombre}</>}
+              Reserva #{tarea.reservaId}
+              {tarea.cantidad > 1 && <> · x{tarea.cantidad}</>}
+              {tarea.fechaServicio && (
+                <> · {new Date(tarea.fechaServicio).toLocaleDateString('es-CO', {
+                  day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                })}</>
+              )}
             </small>
           </div>
-        </div>
-
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span className={`badge ${meta.badge}`}>
-            <i className={`bi ${meta.icon} me-1`} />{meta.label}
+          <span className={`badge ${meta.badge} d-flex align-items-center gap-1`}>
+            <i className={`bi ${meta.icon}`} />{meta.label}
           </span>
-          {tarea.prioridad === 'ALTA' && (
-            <span className="badge bg-danger">
-              <i className="bi bi-exclamation-triangle me-1" />Alta prioridad
-            </span>
-          )}
         </div>
+
+        {tarea.notas && (
+          <p className="text-muted small mb-2 ps-1" style={{ borderLeft: '2px solid rgba(239,193,67,0.4)' }}>
+            {tarea.notas}
+          </p>
+        )}
+
+        {tarea.precioTotal != null && (
+          <div className="small mb-2" style={{ color: 'var(--ss-dark)' }}>
+            <i className="bi bi-cash me-1" style={{ color: 'var(--ss-gold)' }} />
+            ${Number(tarea.precioTotal).toLocaleString('es-CO')}
+          </div>
+        )}
+
+        {meta.next.length > 0 && (
+          <div className="d-flex gap-2 flex-wrap pt-2 border-top">
+            {meta.next.map(estado => {
+              const m = ESTADO_META[estado];
+              return (
+                <button
+                  key={estado}
+                  className={`btn btn-sm ${estado === 'COMPLETADO' ? 'btn-ss-dark' : 'btn-outline-secondary'}`}
+                  style={{ fontSize: '0.78rem', borderRadius: 8 }}
+                  disabled={isUpdating}
+                  onClick={() => onActualizar(tarea.id, estado)}
+                >
+                  {isUpdating
+                    ? <span className="spinner-border spinner-border-sm" style={{ width: '0.65rem', height: '0.65rem' }} />
+                    : <><i className={`bi ${m.icon} me-1`} />{m.label}</>
+                  }
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      {tarea.observaciones && (
-        <p className="text-muted small mt-2 mb-0">
-          <i className="bi bi-chat-left-text me-1" />{tarea.observaciones}
-        </p>
-      )}
-
-      {meta.next.length > 0 && (
-        <div className="d-flex gap-2 mt-3 flex-wrap">
-          {meta.next.map(estado => {
-            const m = ESTADO_META[estado];
-            return (
-              <button
-                key={estado}
-                className={`btn btn-sm ${estado === 'TERMINADA' ? 'btn-ss-dark' : 'btn-outline-secondary'}`}
-                disabled={updating === tarea.id}
-                onClick={() => onActualizar(tarea.id, estado)}
-              >
-                {updating === tarea.id
-                  ? <span className="spinner-border spinner-border-sm" />
-                  : <><i className={`bi ${m.icon} me-1`} />{m.label}</>
-                }
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -82,14 +90,16 @@ export default function DashboardOperaciones() {
   const [tareas,   setTareas]   = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
+  const [success,  setSuccess]  = useState('');
   const [updating, setUpdating] = useState(null);
   const [filtro,   setFiltro]   = useState('TODOS');
 
   const cargar = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const data = await getSolicitudes();
-      setTareas(Array.isArray(data) ? data : data.content ?? []);
+      const data = await getTareas();
+      setTareas(Array.isArray(data) ? data : []);
     } catch {
       setError('Error al cargar las tareas de operaciones.');
     } finally {
@@ -101,11 +111,12 @@ export default function DashboardOperaciones() {
 
   const handleActualizar = async (id, nuevoEstado) => {
     setUpdating(id);
+    setError(''); setSuccess('');
     try {
       await actualizarSolicitud(id, { estado: nuevoEstado });
-      setTareas(prev =>
-        prev.map(t => t.id === id ? { ...t, estado: nuevoEstado } : t)
-      );
+      setTareas(prev => prev.map(t => t.id === id ? { ...t, estado: nuevoEstado } : t));
+      setSuccess(`Tarea #${id} actualizada a "${ESTADO_META[nuevoEstado]?.label ?? nuevoEstado}".`);
+      setTimeout(() => setSuccess(''), 3000);
     } catch {
       setError('No se pudo actualizar la tarea.');
     } finally {
@@ -121,10 +132,9 @@ export default function DashboardOperaciones() {
     ? tareas
     : tareas.filter(t => t.estado === filtro);
 
-  const pendientesAlta = tareas.filter(t => t.estado === 'PENDIENTE' && t.prioridad === 'ALTA').length;
-
   return (
     <div className="fade-in-up p-3 p-md-4">
+
       {/* Header */}
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div>
@@ -132,57 +142,76 @@ export default function DashboardOperaciones() {
             <i className="bi bi-clipboard-check me-2" style={{ color: 'var(--ss-gold)' }} />
             Operaciones
           </h2>
-          <small className="text-muted">Tareas de limpieza y servicios</small>
+          <small className="text-muted">
+            Tareas de servicios adicionales · {tareas.length} en total
+          </small>
         </div>
         <button className="btn btn-outline-secondary btn-sm" onClick={cargar} disabled={loading}>
           <i className="bi bi-arrow-clockwise me-1" />Actualizar
         </button>
       </div>
 
-      {/* Alert alta prioridad */}
-      {pendientesAlta > 0 && (
-        <div className="alert alert-danger d-flex align-items-center gap-2 mb-4">
-          <i className="bi bi-exclamation-triangle-fill flex-shrink-0" />
-          <span>
-            <strong>{pendientesAlta}</strong> tarea{pendientesAlta > 1 ? 's' : ''} pendiente{pendientesAlta > 1 ? 's' : ''} de alta prioridad requieren atención.
-          </span>
-        </div>
-      )}
+      <AlertMessage message={error}   onClose={() => setError('')} />
+      <AlertMessage type="success" message={success} onClose={() => setSuccess('')} />
 
-      <AlertMessage message={error} onClose={() => setError('')} />
-
-      {/* Summary cards */}
+      {/* Stat cards */}
       <div className="row g-3 mb-4">
         {[
-          { estado: 'PENDIENTE',   color: '#efc143', icon: 'bi-clock-fill' },
-          { estado: 'EN_PROGRESO', color: '#0d6efd', icon: 'bi-arrow-repeat' },
-          { estado: 'TERMINADA',   color: '#198754', icon: 'bi-check-circle-fill' },
-        ].map(({ estado, color, icon }) => (
-          <div key={estado} className="col-sm-4">
-            <div className="card border-0 shadow-sm">
-              <div className="card-body d-flex align-items-center gap-3">
-                <i className={`bi ${icon} fs-3`} style={{ color }} />
-                <div>
-                  <div className="fw-bold fs-4 lh-1">{conteo[estado] ?? 0}</div>
-                  <small className="text-muted">{ESTADO_META[estado].label}</small>
+          { estado: 'PENDIENTE',  icon: 'bi-clock-fill' },
+          { estado: 'EN_PROCESO', icon: 'bi-arrow-repeat' },
+          { estado: 'COMPLETADO', icon: 'bi-check-circle-fill' },
+        ].map(({ estado, icon }) => {
+          const m = ESTADO_META[estado];
+          return (
+            <div key={estado} className="col-sm-4">
+              <div
+                className="card border-0 shadow-sm h-100"
+                style={{ borderRadius: 12, borderLeft: `4px solid ${m.color}` }}
+              >
+                <div className="card-body d-flex align-items-center gap-3 py-3">
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width: 44, height: 44, background: m.color + '20' }}
+                  >
+                    <i className={`bi ${icon}`} style={{ color: m.color, fontSize: '1.2rem' }} />
+                  </div>
+                  <div>
+                    <div className="fw-bold fs-4 lh-1">{conteo[estado] ?? 0}</div>
+                    <small className="text-muted">{m.label}</small>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Filter tabs */}
       <div className="d-flex flex-wrap gap-2 mb-4">
-        {['TODOS', ...Object.keys(ESTADO_META)].map(e => (
-          <button
-            key={e}
-            className={`btn btn-sm ${filtro === e ? 'btn-ss-dark' : 'btn-outline-secondary'}`}
-            onClick={() => setFiltro(e)}
-          >
-            {e === 'TODOS' ? `Todas (${tareas.length})` : `${ESTADO_META[e].label} (${conteo[e] ?? 0})`}
-          </button>
-        ))}
+        {['TODOS', ...Object.keys(ESTADO_META)].map(e => {
+          const meta = ESTADO_META[e];
+          const active = filtro === e;
+          return (
+            <button
+              key={e}
+              className="btn btn-sm"
+              style={{
+                borderRadius: 8,
+                fontSize: '0.8rem',
+                background: active ? 'var(--ss-dark)' : '#fff',
+                color: active ? '#fff' : 'var(--ss-dark)',
+                border: active ? '1px solid var(--ss-dark)' : '1px solid rgba(34,32,22,0.2)',
+                fontWeight: active ? 600 : 400,
+              }}
+              onClick={() => setFiltro(e)}
+            >
+              {e === 'TODOS'
+                ? `Todas (${tareas.length})`
+                : `${meta.label} (${conteo[e] ?? 0})`
+              }
+            </button>
+          );
+        })}
       </div>
 
       {/* List */}
@@ -192,7 +221,10 @@ export default function DashboardOperaciones() {
           ? (
             <div className="text-center py-5 text-muted">
               <i className="bi bi-clipboard-x fs-1 d-block mb-2" />
-              {filtro === 'TODOS' ? 'No hay tareas registradas.' : `No hay tareas en estado "${ESTADO_META[filtro]?.label ?? filtro}".`}
+              {filtro === 'TODOS'
+                ? 'No hay tareas de operaciones registradas.'
+                : `No hay tareas en estado "${ESTADO_META[filtro]?.label ?? filtro}".`
+              }
             </div>
           )
           : tareasFiltradas.map(t => (

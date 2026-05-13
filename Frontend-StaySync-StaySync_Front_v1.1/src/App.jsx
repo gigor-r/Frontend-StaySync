@@ -20,6 +20,7 @@ import DashboardHuesped   from './pages/huesped/DashboardHuesped';
 import ReservasHuesped    from './pages/huesped/ReservasHuesped';
 import BuscarHabitaciones from './pages/huesped/BuscarHabitaciones';
 import PasarelaPago       from './pages/huesped/PasarelaPago';
+import PagoExitoso        from './pages/huesped/PagoExitoso';
 
 export default function App() {
   return (
@@ -48,8 +49,10 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/huesped"           element={<DashboardHuesped />} />
             <Route path="/huesped/reservas"  element={<ReservasHuesped />} />
-            <Route path="/huesped/buscar" element={<BuscarHabitaciones />} />
-            <Route path="/huesped/pago"   element={<PasarelaPago />} />
+            <Route path="/huesped/buscar"       element={<BuscarHabitaciones />} />
+            <Route path="/huesped/pago"         element={<PasarelaPago />} />
+            <Route path="/huesped/pago-exitoso" element={<PagoExitoso />} />
+            <Route path="/huesped/pago-fallido" element={<PagoExitoso />} />
           </Route>
         </Route>
 

@@ -30,29 +30,12 @@ export function isDemoUser(email) {
   return Object.prototype.hasOwnProperty.call(DEMO_USERS, email?.toLowerCase() ?? '');
 }
 
-function mockAuthResponse(email, user) {
-  return {
-    accessToken: `demo-access-token-${user.userId}`,
-    refreshToken: `demo-refresh-token-${user.userId}`,
-    tokenType: 'Bearer',
-    expiresIn: 86400000,
-    userId: user.userId,
-    nombreCompleto: user.nombreCompleto,
-    email,
-    rol: user.rol,
-  };
-}
-
 /**
- * Authenticate a user.
+ * Authenticate a user — always via BFF (real JWT + refresh token in DB).
+ * Demo user credentials (admin@, recep@, huesped@) must exist in the database.
  * @returns {Promise<AuthResponse>} Auth payload from BFF.
  */
 export async function login(email, password) {
-  const demo = DEMO_USERS[email?.toLowerCase()];
-  if (demo && demo.password === password) {
-    return mockAuthResponse(email, demo);
-  }
-
   const { data } = await apiClient.post('/auth/login', { email, password });
   return data;
 }
