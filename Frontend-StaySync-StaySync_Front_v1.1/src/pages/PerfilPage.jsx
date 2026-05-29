@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAuth }       from '../context/AuthContext';
-import { getPerfil, updatePerfil } from '../services/usuariosService';
+import { useAuth }        from '../context/AuthContext';
+import { getPerfilPropio, updatePerfilPropio } from '../services/usuariosService';
 import AlertMessage  from '../components/common/AlertMessage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
@@ -15,7 +15,7 @@ function initials(nombre, apellido) {
 }
 
 export default function PerfilPage() {
-  const { user, login } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const [profile,   setProfile]   = useState({ nombre: '', apellido: '', telefono: '' });
   const [form,      setForm]      = useState({ nombre: '', apellido: '', telefono: '' });
@@ -28,17 +28,16 @@ export default function PerfilPage() {
   const [success,  setSuccess]  = useState('');
 
   useEffect(() => {
-    if (!user?.userId) { setLoading(false); return; }
-    getPerfil(user.userId)
+    if (!user) { setLoading(false); return; }
+    getPerfilPropio()
       .then(data => {
         const p = { nombre: data.nombre ?? '', apellido: data.apellido ?? '', telefono: data.telefono ?? '' };
         setProfile(p);
         setForm(p);
       })
       .catch(() => {
-        /* Fallback: split nombreCompleto when backend is unavailable */
-        const parts   = (user.nombreCompleto ?? '').split(' ');
-        const nombre  = parts[0] ?? '';
+        const parts    = (user.nombreCompleto ?? '').split(' ');
+        const nombre   = parts[0] ?? '';
         const apellido = parts.slice(1).join(' ');
         const p = { nombre, apellido, telefono: '' };
         setProfile(p);
@@ -66,13 +65,13 @@ export default function PerfilPage() {
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (!password.trim()) {
+      setError('Debes ingresar tu contraseña actual para confirmar los cambios.');
+      return;
+    }
     setSaving(true); setError('');
     try {
-      const updated = await updatePerfil(user.userId, {
-        email:         user.email,
-        passwordActual: password,
-        ...form,
-      });
+      const updated = await updatePerfilPropio(user.email, password, form);
       const saved = {
         nombre:   updated.nombre   ?? form.nombre,
         apellido: updated.apellido ?? form.apellido,
@@ -81,7 +80,7 @@ export default function PerfilPage() {
       setProfile(saved);
       setForm(saved);
       setPassword('');
-      login({ ...user, nombreCompleto: `${saved.nombre} ${saved.apellido}`.trim() });
+      updateUser({ nombreCompleto: `${saved.nombre} ${saved.apellido}`.trim() });
       setSuccess('Perfil actualizado correctamente.');
       setEditing(false);
     } catch (err) {

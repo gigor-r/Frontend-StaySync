@@ -1,9 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
-import { getReservas, cambiarEstadoReserva } from '../../services/reservasService';
+import { useState, useEffect } from 'react';
+import { getReservasHoy, cambiarEstadoReserva } from '../../services/reservasService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import AlertMessage   from '../../components/common/AlertMessage';
-
-const HOY = new Date().toISOString().split('T')[0];
 
 const fmt = (d) => d ? new Date(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const noches = (e, s) => {
@@ -82,7 +80,8 @@ function TablaVacia({ accion }) {
 }
 
 export default function CheckinRecepcion() {
-  const [reservas,  setReservas]  = useState([]);
+  const [pendientesCheckin,  setPendientesCheckin]  = useState([]);
+  const [pendientesCheckout, setPendientesCheckout] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState('');
   const [success,   setSuccess]   = useState('');
@@ -91,22 +90,14 @@ export default function CheckinRecepcion() {
   const [busqueda,  setBusqueda]  = useState('');
 
   useEffect(() => {
-    getReservas()
-      .then(data => setReservas(Array.isArray(data) ? data : data.content ?? []))
-      .catch(() => setError('Error al cargar reservas.'))
+    getReservasHoy()
+      .then(data => {
+        setPendientesCheckin(data.pendientesCheckin ?? []);
+        setPendientesCheckout(data.pendientesCheckout ?? []);
+      })
+      .catch(() => setError('Error al cargar las reservas del día.'))
       .finally(() => setLoading(false));
   }, []);
-
-  // FIX: CHECKIN y CHECKOUT son los estados correctos (no ACTIVA / FINALIZADA)
-  const pendientesCheckin  = useMemo(() =>
-    reservas.filter(r => r.estado === 'CONFIRMADA' &&
-      r.fechaEntrada && r.fechaEntrada.startsWith(HOY)),
-    [reservas]
-  );
-  const pendientesCheckout = useMemo(() =>
-    reservas.filter(r => r.estado === 'CHECKIN'),
-    [reservas]
-  );
 
   const filtrar = (lista) => {
     if (!busqueda.trim()) return lista;
@@ -122,7 +113,16 @@ export default function CheckinRecepcion() {
     setUpdating(id); setError(''); setSuccess('');
     try {
       await cambiarEstadoReserva(id, { estado: nuevoEstado });
-      setReservas(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
+      // Mover la reserva entre listas según el nuevo estado
+      if (nuevoEstado === 'CHECKIN') {
+        setPendientesCheckin(prev => {
+          const reserva = prev.find(r => r.id === id);
+          if (reserva) setPendientesCheckout(co => [...co, { ...reserva, estado: 'CHECKIN' }]);
+          return prev.filter(r => r.id !== id);
+        });
+      } else if (nuevoEstado === 'CHECKOUT') {
+        setPendientesCheckout(prev => prev.filter(r => r.id !== id));
+      }
       setSuccess(`${accion} completado para la reserva #${id}.`);
     } catch (err) {
       setError(err?.response?.data?.message ?? `No se pudo realizar el ${accion.toLowerCase()}.`);
@@ -133,7 +133,6 @@ export default function CheckinRecepcion() {
 
   const listaActual  = tab === 'checkin' ? filtrar(pendientesCheckin) : filtrar(pendientesCheckout);
   const accionActual = tab === 'checkin' ? 'Check-in' : 'Check-out';
-  // FIX: usar los estados correctos del microservicio
   const estadoNuevo  = tab === 'checkin' ? 'CHECKIN' : 'CHECKOUT';
   const btnVariant   = tab === 'checkin' ? 'btn-ss-dark' : 'btn-outline-primary';
 
@@ -152,7 +151,13 @@ export default function CheckinRecepcion() {
             <i className="bi bi-door-open me-2" style={{ color: 'var(--ss-gold)' }} />
             Check-in / Check-out
           </h2>
-          <small className="text-muted">Gestión de llegadas y salidas de hoy</small>
+          <small className="text-muted">
+            Gestión de llegadas y salidas de hoy
+            <span className="ms-3 text-body-secondary">
+              <i className="bi bi-clock me-1" />
+              Check-in: 15:00 · Check-out: 12:00
+            </span>
+          </small>
         </div>
       </div>
 
