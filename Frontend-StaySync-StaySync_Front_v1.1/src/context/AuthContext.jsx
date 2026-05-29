@@ -51,6 +51,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // Actualiza solo los datos del usuario en contexto y localStorage, sin tocar los tokens
+  const updateUser = useCallback((partial) => {
+    setUser(prev => {
+      const updated = { ...prev, ...partial };
+      localStorage.setItem(KEYS.user, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   /* Expose the current token for the axios interceptor */
   const getToken = useCallback(
     () => accessToken || localStorage.getItem(KEYS.access),
@@ -83,6 +92,7 @@ export function AuthProvider({ children }) {
       setLoading,
       login,
       logout,
+      updateUser,
       getToken,
       hasRole,
     }}>

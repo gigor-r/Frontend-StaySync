@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 
 const PALABRA_CLAVE = 'confirmar';
 
-export default function ModalConfirmarCancelacion({ show, onClose, onConfirm, loading = false }) {
+/**
+ * Modal de confirmación de cancelación.
+ * @param {string|null} deadline - Fecha límite formateada para mostrar la política de cancelación.
+ *                                 Si se pasa, se muestra un aviso informativo con el plazo.
+ */
+export default function ModalConfirmarCancelacion({ show, onClose, onConfirm, loading = false, deadline = null }) {
   const [texto, setTexto] = useState('');
 
   useEffect(() => {
@@ -58,6 +63,21 @@ export default function ModalConfirmarCancelacion({ show, onClose, onConfirm, lo
 
           {/* Body */}
           <div className="modal-body px-4 py-4" style={{ background: '#ffffff' }}>
+
+            {/* Aviso de política de cancelación (solo si hay deadline) */}
+            {deadline && (
+              <div
+                className="d-flex align-items-start gap-2 mb-3 p-3 rounded"
+                style={{ background: 'rgba(239,193,67,0.12)', border: '1px solid rgba(239,193,67,0.45)' }}
+              >
+                <i className="bi bi-clock-history mt-1 flex-shrink-0" style={{ color: 'var(--ss-gold)' }} />
+                <p className="mb-0 small" style={{ color: 'var(--ss-dark)', lineHeight: 1.55 }}>
+                  <strong>Política de cancelación:</strong> Puedes cancelar sin costo hasta el{' '}
+                  <strong>{deadline}</strong>. Después de esa fecha el sistema bloqueará la cancelación.
+                </p>
+              </div>
+            )}
+
             <div
               className="d-flex align-items-start gap-3 mb-3 p-3 rounded"
               style={{ background: 'rgba(220,53,69,0.07)', border: '1px solid rgba(220,53,69,0.2)' }}
